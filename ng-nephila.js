@@ -190,6 +190,9 @@ angular.module('ngNephila.services.scrolledInContainer', [])
 
 angular.module('ngNephila.services.tts', [])
 .factory('tts', ['$q', function($q) {
+  if (!typeof responsiveVoice !== 'undefined') {
+    console.log('Warning, responsiveVoice is not present!');
+  }
   var ready = false;
   var readyCallback;
   var q;
@@ -254,13 +257,15 @@ angular.module('ngNephila.components.datePicker', [
   'ngNephila.tpls.datepicker.datepicker'
 ])
 .directive('datePicker', ['$document', function($document) {
+  if (!typeof moment !== 'undefined') {
+    console.log('Warning, moment is not present!');
+  }
   return {
     restrict: 'E',
     scope: {
       ngModel: '='
     },
     link: function (scope, element, attrs) {
-
       scope.viewFormat = attrs.viewFormat || 'DD MMMM YYYY';
       scope.locale = attrs.locale || 'en';
       scope.firstWeekDaySunday = scope.$eval(attrs.firstWeekDaySunday) || false;
