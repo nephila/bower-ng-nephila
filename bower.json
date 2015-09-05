@@ -10,11 +10,6 @@
     }
   ],
   "description": "Collection of reusable UI components for AngularJS.",
-  "devDependencies": {
-    "angular": "^1.4.1",
-    "angular-mocks": "^1.4.1",
-    "jquery": "~2.1.1"
-  },
   "license": "MIT",
   "ignore": [
     "**/.*",
@@ -24,10 +19,7 @@
     "test",
     "tests"
   ],
-  "resolutions": {
-    "angular": "^1.4.0"
-  },
   "dependencies": {
-    "moment": "~2.10.6"
+    "angular": "^1.4.0"
   }
 }
