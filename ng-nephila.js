@@ -1,6 +1,6 @@
 /*!
  * ngNephila
- * v0.0.1
+ * v0.0.2
  * Copyright 2015 Nephila http://nephila.it/
  * See LICENSE in this repository for license information
  */
@@ -190,9 +190,6 @@ angular.module('ngNephila.services.scrolledInContainer', [])
 
 angular.module('ngNephila.services.tts', [])
 .factory('tts', ['$q', function($q) {
-  if (!typeof responsiveVoice !== 'undefined') {
-    console.log('Warning, responsiveVoice is not present!');
-  }
   var ready = false;
   var readyCallback;
   var q;
@@ -257,15 +254,13 @@ angular.module('ngNephila.components.datePicker', [
   'ngNephila.tpls.datepicker.datepicker'
 ])
 .directive('datePicker', ['$document', function($document) {
-  if (!typeof moment !== 'undefined') {
-    console.log('Warning, moment is not present!');
-  }
   return {
     restrict: 'E',
     scope: {
       ngModel: '='
     },
     link: function (scope, element, attrs) {
+
       scope.viewFormat = attrs.viewFormat || 'DD MMMM YYYY';
       scope.locale = attrs.locale || 'en';
       scope.firstWeekDaySunday = scope.$eval(attrs.firstWeekDaySunday) || false;
@@ -402,6 +397,21 @@ angular.module('ngNephila.components.fallbackImg',[])
   };
 });
 
+angular.module('ngNephila.components.focusMe',[])
+.directive('focusMe', ['$timeout', function($timeout) {
+  return {
+    link: function(scope, element, attrs) {
+      scope.$watch(attrs.focusMe, function(value) {
+        if(value === true) {
+          $timeout(function() {
+            element[0].focus();
+          });
+        }
+      });
+    }
+  };
+}]);
+
 angular.module('ngNephila.components.infinitescroll', [
   'ngNephila.services.scrolledInContainer'
 ])
@@ -481,7 +491,9 @@ angular.module('ngNephila.components', [
   'ngNephila.components.paginator',
   'ngNephila.components.toggle',
   'ngNephila.components.datePicker',
-  'ngNephila.components.modal'
+  'ngNephila.components.modal',
+  'ngNephila.components.tabsaccordion',
+  'ngNephila.components.focusMe'
 ]);
 angular.module('ngNephila.components.paginator', [
   'ngNephila.services.pagination',
@@ -600,6 +612,132 @@ angular.module('ngNephila.components.paginator', [
     };
   }
 ]);
+
+angular.module('ngNephila.components.tabsaccordion', [])
+.directive('tabsaccordion', function() {
+  return {
+    restrict: 'E',
+    scope: {},
+    transclude: true,
+    replace: true,
+    controller: function($scope) {
+      var vm = this;
+      vm.$scope = $scope;
+      $scope.statuses = {};
+      $scope.contents = {};
+
+      $scope.setStatus = function(key, status) {
+        if (status === true) {
+          for (var k in $scope.statuses) {
+            $scope.statuses[k] = false;
+          }
+        }
+        $scope.statuses[key] = status;
+      };
+
+      $scope.getStatus = function(key) {
+        return $scope.statuses[key];
+      };
+
+      $scope.setContent = function(key, content) {
+        $scope.contents[key] = content;
+      };
+
+      $scope.getContent = function(key) {
+        return $scope.contents[key];
+      };
+
+    },
+    link: function(scope, element, attrs, transcludeFn) {
+
+    },
+    template: '<div ng-transclude></div>',
+  };
+})
+.directive('tabheaders', function() {
+  return {
+    restrict: 'E',
+    scope: {},
+    transclude: true,
+    replace: true,
+    controller: function($scope) {
+
+    },
+    link: function(scope, element, attrs, transcludeFn) {
+
+    },
+    template: '<ul class="tab-headers" ng-transclude></ul>',
+  };
+})
+.directive('tabcontents', function() {
+  return {
+    restrict: 'E',
+    scope: {},
+    transclude: true,
+    replace: true,
+    controller: function($scope) {
+    },
+    link: function(scope, element, attrs, transcludeFn) {
+
+    },
+    template: '<div class="tab-contents" ng-transclude></div>',
+  };
+})
+.directive('tabheader', function() {
+  return {
+    scope: {
+      ref: '@',
+      selected: '='
+    },
+    require: '^tabsaccordion',
+    restrict: 'E',
+    transclude: true,
+    replace: true,
+    link: function(scope, element, attrs, tabsaccordion) {
+      scope.selected = (scope.selected || false);
+      tabsaccordion.$scope.setStatus(attrs['ref'], scope.selected);
+      tabsaccordion.$scope.setContent(
+        attrs['ref'],
+        element.find('a')[0].innerHTML
+      );
+      element.find('a').on('click', function(e){
+        e.preventDefault();
+        scope.$apply(
+          tabsaccordion.$scope.setStatus(attrs['ref'], true)
+        );
+      });
+      tabsaccordion.$scope.$watch('statuses.' + attrs['ref'] + '', function (newValue, oldValue){
+        scope.selected = tabsaccordion.$scope.getStatus(attrs['ref']);
+      });
+    },
+    template: '<li ng-class="{\'tab-active\':selected}"><a href="#{{ref}}" ng-transclude></a></li>',
+  };
+})
+.directive('tabcontent', ['$sce', function($sce) {
+  return {
+    scope: {
+      ref: '@'
+    },
+    require: '^tabsaccordion',
+    restrict: 'E',
+    transclude: true,
+    replace: true,
+    link: function(scope, element, attrs, tabsaccordion) {
+      scope.selected = false;
+      element.find('a').on('click', function(e){
+        e.preventDefault();
+        scope.$apply(
+          tabsaccordion.$scope.setStatus(attrs['ref'], true)
+        );
+      });
+      scope.content = $sce.trustAsHtml(tabsaccordion.$scope.getContent(attrs['ref']));
+      tabsaccordion.$scope.$watch('statuses.' + attrs['ref'] + '', function (newValue, oldValue){
+        scope.selected = tabsaccordion.$scope.getStatus(attrs['ref']);
+      });
+    },
+    template: '<div><div class="accordion-link" ng-class="{\'accordion-active\':selected}"><a href="#{{ref}}" ng-bind-html="content"></a></div><div ng-class="{\'tab-active\':selected, \'accordion-active\':selected}" class="tab-content" id="{{ref}}" ng-transclude></div></div>',
+  };
+}]);
 
 angular.module('ngNephila.components.toggle',[])
 .directive('toggle', ['$rootScope', function($rootScope) {
