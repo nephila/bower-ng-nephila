@@ -1,6 +1,6 @@
 /*!
  * ngNephila
- * v0.0.2
+ * v0.0.3
  * Copyright 2015 Nephila http://nephila.it/
  * See LICENSE in this repository for license information
  */
@@ -13,11 +13,29 @@ angular.module('ngNephila', [
 angular.module('ngNephila.filters', [
   'ngNephila.filters.range',
   'ngNephila.filters.titlecase',
-  'ngNephila.filters.stripHtml'
+  'ngNephila.filters.stripHtml',
+  'ngNephila.filters.strip',
+  'ngNephila.filters.path'
 ]);
 
+angular.module('ngNephila.filters.path', [])
+.filter('nphPath', function() {
+  return function(base, path, noTrailingSlash) {
+    var remove = '/';
+    while (path.length > 0 && remove.indexOf(path.charAt(0)) != -1) {
+      path = path.substr(1);
+    }
+    while (path.length > 0 && remove.indexOf(path.charAt(path.length - 1)) != -1) {
+      path = path.substr(0, path.length - 1);
+    }
+    if (!noTrailingSlash) {
+      path = path + '/';
+    }
+    return base + (base.charAt(base.length - 1) === '/' ? '' : '/') + path;
+  };
+});
 angular.module('ngNephila.filters.range', [])
-.filter('range', function(){
+.filter('nphRange', function(){
   return function(start, end, step) {
     var res = [];
     var leftToRight = true;
@@ -46,13 +64,26 @@ angular.module('ngNephila.filters.range', [])
   };
 });
 angular.module('ngNephila.filters.stripHtml', [])
-.filter('stripHtml', function() {
+.filter('nphStripHtml', function() {
   return function(s) {
     return s ? String(s).replace(/<[^>]+>/gm, '') : '';
   };
 });
+angular.module('ngNephila.filters.strip', [])
+.filter('nphStrip', function() {
+  return function(s, ch) {
+    ch = (ch || ' ');
+    while (s.length > 0 && ch.indexOf(s.charAt(0)) != -1) {
+      s = s.substr(1);
+    }
+    while (s.length > 0 && ch.indexOf(s.charAt(s.length - 1)) != -1) {
+      s = s.substr(0, s.length - 1);
+    }
+    return s;
+  };
+});
 angular.module('ngNephila.filters.titlecase', [])
-.filter('titlecase', function() {
+.filter('nphTitlecase', function() {
   return function(s, onlyFirst) {
     s = ( s === undefined || s === null ) ? '' : s;
     onlyFirst = ( onlyFirst === undefined || onlyFirst === null ) ? false : onlyFirst;
@@ -66,7 +97,7 @@ angular.module('ngNephila.filters.titlecase', [])
   };
 });
 angular.module('ngNephila.services.debounce', [])
-.factory('debounce', ['$timeout','$q', function($timeout, $q) {
+.factory('nphDebounce', ['$timeout','$q', function($timeout, $q) {
   return function debounce(func, wait, immediate) {
     var timeout;
     var deferred = $q.defer();
@@ -97,10 +128,11 @@ angular.module('ngNephila.services', [
   'ngNephila.services.pagination',
   'ngNephila.services.debounce',
   'ngNephila.services.scrolledInContainer',
-  'ngNephila.services.tts'
+  'ngNephila.services.tts',
+  'ngNephila.services.pathJoin'
 ]);
 angular.module('ngNephila.services.pagination', [])
-.provider('pagination', function paginationProvider() {
+.provider('nphPagination', function paginationProvider() {
 
   var itemsPerPage = 0;
 
@@ -166,8 +198,30 @@ angular.module('ngNephila.services.pagination', [])
   };
 });
 
+angular.module('ngNephila.services.pathJoin', [
+  'ngNephila.filters.path'
+])
+.factory('nphPathJoin', ['$filter', function($filter) {
+  return function() {
+    var noTrailingSlash = false;
+    var pathArgumentsLength = arguments.length;
+    if (typeof arguments[arguments.length - 1] == 'boolean') {
+      noTrailingSlash = arguments[arguments.length - 1];
+      pathArgumentsLength--;
+    }
+    var str = arguments[0];
+    for (var i = 1; i < pathArgumentsLength; i++) {
+      str = $filter('nphPath')(str, arguments[i], true);
+    }
+    if (!noTrailingSlash) {
+      str += '/';
+    }
+    return str;
+  };
+}]);
+
 angular.module('ngNephila.services.scrolledInContainer', [])
-.factory('scrolledInContainer', function() {
+.factory('nphScrolledInContainer', function() {
   return function(element, container) {
     var elementBox = element.getBoundingClientRect();
     var visible = (!element.style.opacity || element.style.opacity > 0) &&
@@ -189,7 +243,7 @@ angular.module('ngNephila.services.scrolledInContainer', [])
 });
 
 angular.module('ngNephila.services.tts', [])
-.factory('tts', ['$q', function($q) {
+.factory('nphTts', ['$q', function($q) {
   var ready = false;
   var readyCallback;
   var q;
@@ -253,7 +307,7 @@ angular.module('ngNephila.services.tts', [])
 angular.module('ngNephila.components.datePicker', [
   'ngNephila.tpls.datepicker.datepicker'
 ])
-.directive('datePicker', ['$document', function($document) {
+.directive('nphDatePicker', ['$document', function($document) {
   return {
     restrict: 'E',
     scope: {
@@ -387,21 +441,23 @@ angular.module('ngNephila.components.datePicker', [
 }]);
 
 angular.module('ngNephila.components.fallbackImg',[])
-.directive('fallbackImg', function () {
+.directive('nphFallbackImg', function () {
   return {
+    restrict: 'A',
     link: function(scope, element, attrs) {
       element.bind('error', function () {
-        angular.element(this).attr('src', attrs.fallbackImg);
+        angular.element(this).attr('src', attrs.nphFallbackImg);
       });
     }
   };
 });
 
-angular.module('ngNephila.components.focusMe',[])
-.directive('focusMe', ['$timeout', function($timeout) {
+angular.module('ngNephila.components.focusMe', [])
+.directive('nphFocusMe', ['$timeout', function($timeout) {
   return {
+    restrict: 'A',
     link: function(scope, element, attrs) {
-      scope.$watch(attrs.focusMe, function(value) {
+      scope.$watch(attrs.nphFocusMe, function(value) {
         if(value === true) {
           $timeout(function() {
             element[0].focus();
@@ -415,8 +471,8 @@ angular.module('ngNephila.components.focusMe',[])
 angular.module('ngNephila.components.infinitescroll', [
   'ngNephila.services.scrolledInContainer'
 ])
-.directive('infiniteScroll', [
-  '$window', '$rootScope', 'scrolledInContainer', function($window, $rootScope, scrolledInContainer) {
+.directive('nphInfiniteScroll', [
+  '$window', '$rootScope', 'nphScrolledInContainer', function($window, $rootScope, nphScrolledInContainer) {
     return {
       restrict: 'E',
       scope: {
@@ -433,7 +489,7 @@ angular.module('ngNephila.components.infinitescroll', [
           if (scope.ngIf() === false) {
             return;
           }
-          reached = scrolledInContainer(elem[0], container[0]);
+          reached = nphScrolledInContainer(elem[0], container[0]);
           if (reached && !visible) {
             visible = true;
             if (scope.$$phase || $rootScope.$$phase) {
@@ -467,7 +523,7 @@ angular.module('ngNephila.components.infinitescroll', [
 angular.module('ngNephila.components.modal', [
   'ngNephila.tpls.modal.modal'
 ])
-.directive('modal', function() {
+.directive('nphModal', function() {
   return {
     restrict: 'E',
     scope: {
@@ -500,8 +556,8 @@ angular.module('ngNephila.components.paginator', [
   'ngNephila.filters.range',
   'ngNephila.tpls.paginator.paginator'
 ])
-.directive('paginator', [
-  '$filter', 'pagination', function($filter, pagination) {
+.directive('nphPaginator', [
+  '$filter', 'nphPagination', function($filter, nphPagination) {
     return {
       restrict: 'E',
       scope: {
@@ -518,9 +574,9 @@ angular.module('ngNephila.components.paginator', [
       },
       controller: ['$scope', function ( $scope ) {
         $scope.pagesVisibility = [];
-        $scope.paginator = pagination.getPaginator();
+        $scope.paginator = nphPagination.getPaginator();
         $scope.paginator.setNumberOfItems(parseInt($scope.numberOfItems));
-        $scope.pages = $filter('range')(1, 1 + $scope.paginator.getNumberOfPages());
+        $scope.pages = $filter('nphRange')(1, 1 + $scope.paginator.getNumberOfPages());
         $scope.calculatePagesVisiblity = function() {
           var compress = parseInt($scope.compress);
           if (!compress) {
@@ -605,7 +661,7 @@ angular.module('ngNephila.components.paginator', [
       link: function(scope, elem, attrs) {
         scope.$watch('numberOfItems', function(newValue, oldValue) {
           scope.paginator.setNumberOfItems(parseInt(newValue));
-          scope.pages = $filter('range')(1, 1 + scope.paginator.getNumberOfPages());
+          scope.pages = $filter('nphRange')(1, 1 + scope.paginator.getNumberOfPages());
           scope.calculatePagesVisiblity();
         });
       }
@@ -614,7 +670,7 @@ angular.module('ngNephila.components.paginator', [
 ]);
 
 angular.module('ngNephila.components.tabsaccordion', [])
-.directive('tabsaccordion', function() {
+.directive('nphTabsaccordion', function() {
   return {
     restrict: 'E',
     scope: {},
@@ -654,7 +710,7 @@ angular.module('ngNephila.components.tabsaccordion', [])
     template: '<div ng-transclude></div>',
   };
 })
-.directive('tabheaders', function() {
+.directive('nphTabheaders', function() {
   return {
     restrict: 'E',
     scope: {},
@@ -669,7 +725,7 @@ angular.module('ngNephila.components.tabsaccordion', [])
     template: '<ul class="tab-headers" ng-transclude></ul>',
   };
 })
-.directive('tabcontents', function() {
+.directive('nphTabcontents', function() {
   return {
     restrict: 'E',
     scope: {},
@@ -683,13 +739,13 @@ angular.module('ngNephila.components.tabsaccordion', [])
     template: '<div class="tab-contents" ng-transclude></div>',
   };
 })
-.directive('tabheader', function() {
+.directive('nphTabheader', function() {
   return {
     scope: {
       ref: '@',
       selected: '='
     },
-    require: '^tabsaccordion',
+    require: '^nphTabsaccordion',
     restrict: 'E',
     transclude: true,
     replace: true,
@@ -713,12 +769,12 @@ angular.module('ngNephila.components.tabsaccordion', [])
     template: '<li ng-class="{\'tab-active\':selected}"><a href="#{{ref}}" ng-transclude></a></li>',
   };
 })
-.directive('tabcontent', ['$sce', function($sce) {
+.directive('nphTabcontent', ['$sce', function($sce) {
   return {
     scope: {
       ref: '@'
     },
-    require: '^tabsaccordion',
+    require: '^nphTabsaccordion',
     restrict: 'E',
     transclude: true,
     replace: true,
@@ -740,8 +796,9 @@ angular.module('ngNephila.components.tabsaccordion', [])
 }]);
 
 angular.module('ngNephila.components.toggle',[])
-.directive('toggle', ['$rootScope', function($rootScope) {
+.directive('nphToggle', ['$rootScope', function($rootScope) {
   return {
+    restrict: 'AE',
     scope: {
       state: '=',
     },
